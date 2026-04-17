@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quattrick Stats Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a12; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #f0f0f0; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #111; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+  /* Header */
+  #header { background: #0d0d1a; border-bottom: 1px solid #1a1a2e; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  #header .title { font-size: 20px; font-weight: 700; color: #fff; line-height: 1; }
+  #header .subtitle { font-size: 11px; color: #555; margin-top: 2px; font-weight: 500; letter-spacing: 1px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { background: none; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 7px 16px; border-radius: 8px; transition: all 0.2s; color: #555; }
+  .tab:hover { color: #888; }
+  .tab.active { background: #1e1e38; color: #7c7cff; }
+
+  /* Main */
+  #main { max-width: 700px; margin: 0 auto; padding: 20px 16px; }
+
+  /* Stat card */
+  .stat-card { background: #12121e; border: 1px solid #1e1e30; border-radius: 12px; padding: 16px; transition: border-color 0.2s; margin-bottom: 12px; }
+  .stat-card:hover { border-color: #2e2e50; }
+  .stat-header { display: flex; align-items: center; justify-content: space-between; }
+  .stat-header.has-content { margin-bottom: 12px; }
+  .stat-label { display: flex; align-items: center; gap: 10px; }
+  .stat-icon { font-size: 18px; }
+  .stat-name { font-size: 15px; font-weight: 600; color: #ddd; }
+
+  /* Buttons */
+  .btn { border: none; cursor: pointer; font-family: system-ui, sans-serif; font-weight: 600; transition: all 0.15s; }
+  .btn-add { background: #1a1a2e; color: #7c7cff; border: 1px dashed #3a3a6e; border-radius: 8px; padding: 6px 14px; font-size: 13px; }
+  .btn-add:hover { background: #22224a; border-color: #5555aa; color: #aaaaff; }
+  .btn-plus { background: #1e3a1e; color: #4ade80; border: 1px solid #2a5a2a; border-radius: 6px; width: 28px; height: 28px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .btn-plus:hover { background: #2a5a2a; }
+  .btn-minus { background: #3a1e1e; color: #f87171; border: 1px solid #5a2a2a; border-radius: 6px; width: 28px; height: 28px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .btn-minus:hover { background: #5a2a2a; }
+  .count-controls { display: flex; align-items: center; gap: 8px; }
+  .count-val { font-size: 22px; font-weight: 700; color: #4ade80; min-width: 32px; text-align: center; }
+  .count-val-sm { font-size: 20px; font-weight: 700; color: #4ade80; min-width: 28px; text-align: center; }
+
+  /* Player entries */
+  .player-entries { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .player-row { display: flex; align-items: center; justify-content: space-between; background: #0d0d1a; border-radius: 8px; padding: 6px 10px; }
+  .player-info { display: flex; align-items: center; gap: 8px; }
+  .player-name { font-size: 14px; font-weight: 500; color: #ccc; }
+
+  /* Avatar */
+  .avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.15); }
+  .avatar-fallback { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.15); font-family: system-ui, sans-serif; letter-spacing: 0.5px; }
+
+  /* Dropdown */
+  .add-wrap { position: relative; display: inline-block; }
+  .dropdown { position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 10px; padding: 6px; z-index: 999; width: 220px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); display: none; }
+  .dropdown.open { display: block; }
+  .dropdown-inner { max-height: 240px; overflow-y: auto; }
+  .dd-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 14px; transition: background 0.1s; }
+  .dd-item:hover { background: #2a2a45; }
+
+  /* Overlay */
+  #overlay { display: none; position: fixed; inset: 0; z-index: 998; }
+  #overlay.open { display: block; }
+
+  /* Leaderboard */
+  #leaderboard { display: none; }
+  .lb-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: #555; margin-bottom: 16px; }
+  .lb-empty { color: #555; text-align: center; padding: 40px 0; }
+  .lb-row { background: #12121e; border: 1px solid #1e1e30; border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 14px; }
+  .lb-rank { font-size: 22px; font-weight: 700; min-width: 28px; line-height: 1; padding-top: 4px; }
+  .lb-info { flex: 1; }
+  .lb-player { font-size: 15px; font-weight: 600; color: #eee; }
+  .lb-badges { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
+  .lb-badge { font-size: 12px; color: #888; background: #1a1a2e; border-radius: 5px; padding: 2px 7px; }
+  .lb-badge span { color: #7c7cff; font-weight: 700; }
+  .lb-total { font-size: 26px; font-weight: 700; color: #7c7cff; line-height: 1; }
+
+  /* Views */
+  #stats-view { display: block; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div class="title">Quattrick</div>
+    <div class="subtitle">STATS TRACKER</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('stats')">Stats</button>
+    <button class="tab" onclick="switchView('leaderboard')">Board</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="stats-view"></div>
+  <div id="leaderboard-view" style="display:none;">
+    <div class="lb-title">PLAYER LEADERBOARD</div>
+    <div id="lb-content"></div>
+  </div>
+</div>
+
+<div id="overlay" onclick="closeAllDropdowns()"></div>
+
+<script>
+const PLAYERS = [
+  "Violet Evergarden","Female Chief","Makima","Shalom","Kafka","Kiana Kaslana",
+  "Mikasa Ackerman","Zoya","Acheron","Raiden Shogun","Arlecchino","Artoria Pendragon",
+  "Clorinde","Dva","Yumeko Jabami","2B","Rita Rossweisse","Elysia","Kujou Sara",
+  "Tracer","Albedo","Esdeath"
+];
+
+const AVATAR_COLORS = [
+  "#e84393","#f59e0b","#ef4444","#10b981","#8b5cf6","#3b82f6",
+  "#f97316","#06b6d4","#ec4899","#6366f1","#14b8a6","#84cc16",
+  "#a855f7","#0ea5e9","#f43f5e","#78716c","#e11d48","#7c3aed",
+  "#b45309","#22c55e","#0284c7","#dc2626"
+];
+
+const BASE_URL = "https://owdzeyfhdqbnznidmobf.supabase.co/storage/v1/object/public/Players%20Velvet%20Kicks/";
+const PLAYER_PHOTOS = {
+  "Violet Evergarden": BASE_URL + "violetevergarden.png",
+  "Female Chief":      BASE_URL + "femalechief.png",
+  "Makima":            BASE_URL + "makima.png",
+  "Shalom":            BASE_URL + "shalom.png",
+  "Kafka":             BASE_URL + "kafka.png",
+  "Kiana Kaslana":     BASE_URL + "kianakaslana.png",
+  "Mikasa Ackerman":   BASE_URL + "mikasaackerman.png",
+  "Zoya":              BASE_URL + "zoya.png",
+  "Acheron":           BASE_URL + "acheron.png",
+  "Raiden Shogun":     BASE_URL + "raidenshogun.png",
+  "Arlecchino":        BASE_URL + "arlecchino.png",
+  "Artoria Pendragon": BASE_URL + "artoriapendragon.png",
+  "Clorinde":          BASE_URL + "clorinde.png",
+  "Dva":               BASE_URL + "dva.png",
+  "Yumeko Jabami":     BASE_URL + "yumekojabami.png",
+  "2B":                BASE_URL + "2b.png",
+  "Rita Rossweisse":   BASE_URL + "ritarossweisse.png",
+  "Elysia":            BASE_URL + "elysia.png",
+  "Kujou Sara":        BASE_URL + "kujousara.png",
+  "Tracer":            BASE_URL + "tracer.png",
+  "Albedo":            BASE_URL + "albedo.png",
+  "Esdeath":           BASE_URL + "esdeath.png",
+};
+
+const STATS = [
+  { key: "quattrick",        label: "Quattrick",        icon: "⚽⚽⚽⚽", hasPlayers: true },
+  { key: "quattrick_assist", label: "Quattrick Assist", icon: "🎯🎯🎯🎯", hasPlayers: true },
+  { key: "hattrick",         label: "Hattrick",         icon: "⚽⚽⚽",   hasPlayers: true },
+  { key: "hattrick_assist",  label: "Hattrick Assist",  icon: "🎯🎯🎯",   hasPlayers: true },
+  { key: "own_goal",         label: "Own Goal",         icon: "🔴",       hasPlayers: true },
+  { key: "clean_sheet",      label: "Clean Sheet",      icon: "🧤",       hasPlayers: false },
+  { key: "brace",            label: "Brace",            icon: "⚽⚽",     hasPlayers: true },
+  { key: "brace_assist",     label: "Brace Assist",     icon: "🎯🎯",     hasPlayers: true },
+  { key: "penalty_goal",     label: "Penalty Goal",     icon: "🥅",       hasPlayers: true },
+  { key: "winning_goal",     label: "Winning Goal",     icon: "🏆",       hasPlayers: true },
+  { key: "double_yellow",    label: "Double Yellow",    icon: "🟨🟨",     hasPlayers: true },
+  { key: "comeback_win",     label: "Comeback Win",     icon: "💪",       hasPlayers: true },
+  { key: "shutout_streak",   label: "Shutout Streak",   icon: "🔒",       hasPlayers: true },
+  { key: "injury",           label: "Injury",           icon: "🩹",       hasPlayers: true },
+];
+
+// State
+const stats = {};
+STATS.forEach(st => { stats[st.key] = { count: 0, entries: [] }; });
+
+// Prefill
+const prefill = [
+  { key: "hattrick",       player: "Female Chief",      count: 1 },
+  { key: "hattrick_assist",player: "Shalom",            count: 1 },
+  { key: "own_goal",       player: "Tracer",            count: 1 },
+  { key: "clean_sheet",    count: 6 },
+  { key: "brace",          player: "Female Chief",      count: 1 },
+  { key: "brace",          player: "Violet Evergarden", count: 1 },
+  { key: "brace",          player: "Makima",            count: 1 },
+  { key: "brace_assist",   player: "Shalom",            count: 1 },
+  { key: "injury",         player: "Raiden Shogun",     count: 1 },
+];
+prefill.forEach(p => {
+  if (p.player) {
+    stats[p.key].entries.push({ player: p.player, count: p.count });
+  } else {
+    stats[p.key].count = p.count;
+  }
+});
+
+let currentView = 'stats';
+let openDropdown = null;
+
+// Helpers
+function playerColor(name) {
+  return AVATAR_COLORS[PLAYERS.indexOf(name) % AVATAR_COLORS.length];
+}
+function initials(name) {
+  return name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+}
+function avatarHTML(name, size) {
+  const photo = PLAYER_PHOTOS[name];
+  if (photo) {
+    return `<img src="${photo}" alt="${name}" class="avatar" style="width:${size}px;height:${size}px;" onerror="this.outerHTML=fallbackAvatar('${name}',${size})">`;
+  }
+  return fallbackAvatar(name, size);
+}
+function fallbackAvatar(name, size) {
+  const color = playerColor(name);
+  const fs = Math.round(size * 0.32);
+  return `<div class="avatar-fallback" style="width:${size}px;height:${size}px;background:${color};font-size:${fs}px;">${initials(name)}</div>`;
+}
+
+// Render
+function renderStats() {
+  const container = document.getElementById('stats-view');
+  container.innerHTML = '';
+  STATS.forEach(stat => {
+    const data = stats[stat.key];
+    const hasContent = (!stat.hasPlayers) || data.entries.length > 0;
+
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+
+    // Header
+    let headerHTML = `
+      <div class="stat-header ${hasContent ? 'has-content' : ''}">
+        <div class="stat-label">
+          <span class="stat-icon">${stat.icon}</span>
+          <span class="stat-name">${stat.label}</span>
+        </div>`;
+
+    if (!stat.hasPlayers) {
+      headerHTML += `
+        <div class="count-controls">
+          <button class="btn btn-minus" onclick="changeClean(-1)">−</button>
+          <span class="count-val" id="clean-count">${data.count}</span>
+          <button class="btn btn-plus" onclick="changeClean(1)">+</button>
+        </div>`;
+    }
+    headerHTML += `</div>`;
+
+    // Player entries
+    let entriesHTML = '';
+    if (stat.hasPlayers && data.entries.length > 0) {
+      entriesHTML = `<div class="player-entries">`;
+      data.entries.forEach(entry => {
+        entriesHTML += `
+          <div class="player-row">
+            <div class="player-info">
+              ${avatarHTML(entry.player, 32)}
+              <span class="player-name">${entry.player}</span>
+            </div>
+            <div class="count-controls">
+              <button class="btn btn-minus" onclick="changeEntry('${stat.key}','${entry.player}',-1)">−</button>
+              <span class="count-val-sm">${entry.count}</span>
+              <button class="btn btn-plus" onclick="changeEntry('${stat.key}','${entry.player}',1)">+</button>
+            </div>
+          </div>`;
+      });
+      entriesHTML += `</div>`;
+    }
+
+    // Add player button + dropdown
+    let addHTML = '';
+    if (stat.hasPlayers) {
+      const isOpen = openDropdown === stat.key;
+      let ddItems = PLAYERS.map(p => `
+        <div class="dd-item" onclick="addPlayer('${stat.key}','${p}')">
+          ${avatarHTML(p, 28)}
+          <span>${p}</span>
+        </div>`).join('');
+
+      addHTML = `
+        <div class="add-wrap">
+          <button class="btn btn-add" onclick="toggleDropdown(event,'${stat.key}')">+ Add Player</button>
+          <div class="dropdown ${isOpen ? 'open' : ''}" id="dd-${stat.key}">
+            <div class="dropdown-inner">${ddItems}</div>
+          </div>
+        </div>`;
+    }
+
+    card.innerHTML = headerHTML + entriesHTML + addHTML;
+    container.appendChild(card);
+  });
+}
+
+function renderLeaderboard() {
+  const leaderboard = PLAYERS.map(player => {
+    const totals = {};
+    STATS.filter(s => s.hasPlayers).forEach(st => {
+      const entry = stats[st.key].entries.find(e => e.player === player);
+      totals[st.key] = entry ? entry.count : 0;
+    });
+    const total = Object.values(totals).reduce((a, b) => a + b, 0);
+    return { player, totals, total };
+  }).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+
+  const container = document.getElementById('lb-content');
+  if (leaderboard.length === 0) {
+    container.innerHTML = '<div class="lb-empty">No stats recorded yet</div>';
+    return;
+  }
+
+  container.innerHTML = leaderboard.map((row, i) => {
+    const rankColor = i === 0 ? '#fbbf24' : i === 1 ? '#94a3b8' : i === 2 ? '#b87333' : '#333';
+    const badges = STATS.filter(s => s.hasPlayers && row.totals[s.key] > 0)
+      .map(s => `<span class="lb-badge">${s.icon} ${s.label}: <span>${row.totals[s.key]}</span></span>`)
+      .join('');
+    return `
+      <div class="lb-row">
+        <div class="lb-rank" style="color:${rankColor}">${i + 1}</div>
+        ${avatarHTML(row.player, 44)}
+        <div class="lb-info">
+          <div class="lb-player">${row.player}</div>
+          <div class="lb-badges">${badges}</div>
+        </div>
+        <div class="lb-total">${row.total}</div>
+      </div>`;
+  }).join('');
+}
+
+// Actions
+function changeClean(delta) {
+  stats.clean_sheet.count = Math.max(0, stats.clean_sheet.count + delta);
+  renderStats();
+}
+
+function changeEntry(statKey, player, delta) {
+  const entries = stats[statKey].entries;
+  const idx = entries.findIndex(e => e.player === player);
+  if (idx >= 0) {
+    entries[idx].count += delta;
+    if (entries[idx].count <= 0) entries.splice(idx, 1);
+  }
+  renderStats();
+}
+
+function addPlayer(statKey, player) {
+  const entries = stats[statKey].entries;
+  const existing = entries.find(e => e.player === player);
+  if (existing) {
+    existing.count += 1;
+  } else {
+    entries.push({ player, count: 1 });
+  }
+  openDropdown = null;
+  document.getElementById('overlay').classList.remove('open');
+  renderStats();
+}
+
+function toggleDropdown(e, statKey) {
+  e.stopPropagation();
+  if (openDropdown === statKey) {
+    openDropdown = null;
+    document.getElementById('overlay').classList.remove('open');
+  } else {
+    openDropdown = statKey;
+    document.getElementById('overlay').classList.add('open');
+  }
+  renderStats();
+}
+
+function closeAllDropdowns() {
+  openDropdown = null;
+  document.getElementById('overlay').classList.remove('open');
+  renderStats();
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && view === 'stats') || (i === 1 && view === 'leaderboard'));
+  });
+  document.getElementById('stats-view').style.display = view === 'stats' ? 'block' : 'none';
+  document.getElementById('leaderboard-view').style.display = view === 'leaderboard' ? 'block' : 'none';
+  if (view === 'leaderboard') renderLeaderboard();
+}
+
+// Init
+renderStats();
+</script>
+</body>
+</html>
