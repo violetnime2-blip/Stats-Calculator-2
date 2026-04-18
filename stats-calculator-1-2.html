@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Velvet Kicks Stats Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a12; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #f0f0f0; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #111; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+  /* Header */
+  #header { background: #0d0d1a; border-bottom: 1px solid #1a1a2e; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  #header .title { font-size: 20px; font-weight: 700; color: #fff; line-height: 1; }
+  #header .subtitle { font-size: 11px; color: #555; margin-top: 2px; font-weight: 500; letter-spacing: 1px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { background: none; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 7px 16px; border-radius: 8px; transition: all 0.2s; color: #555; }
+  .tab:hover { color: #888; }
+  .tab.active { background: #1e1e38; color: #7c7cff; }
+
+  /* Main */
+  #main { max-width: 700px; margin: 0 auto; padding: 20px 16px; }
+
+  /* Stat card */
+  .stat-card { background: #12121e; border: 1px solid #1e1e30; border-radius: 12px; padding: 16px; transition: border-color 0.2s; margin-bottom: 12px; }
+  .stat-card:hover { border-color: #2e2e50; }
+  .stat-header { display: flex; align-items: center; justify-content: space-between; }
+  .stat-header.has-content { margin-bottom: 12px; }
+  .stat-label { display: flex; align-items: center; gap: 10px; }
+  .stat-icon { font-size: 18px; }
+  .stat-name { font-size: 15px; font-weight: 600; color: #ddd; }
+
+  /* Buttons */
+  .btn { border: none; cursor: pointer; font-family: system-ui, sans-serif; font-weight: 600; transition: all 0.15s; }
+  .btn-add { background: #1a1a2e; color: #7c7cff; border: 1px dashed #3a3a6e; border-radius: 8px; padding: 6px 14px; font-size: 13px; }
+  .btn-add:hover { background: #22224a; border-color: #5555aa; color: #aaaaff; }
+  .btn-plus { background: #1e3a1e; color: #4ade80; border: 1px solid #2a5a2a; border-radius: 6px; width: 28px; height: 28px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .btn-plus:hover { background: #2a5a2a; }
+  .btn-minus { background: #3a1e1e; color: #f87171; border: 1px solid #5a2a2a; border-radius: 6px; width: 28px; height: 28px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .btn-minus:hover { background: #5a2a2a; }
+  .count-controls { display: flex; align-items: center; gap: 8px; }
+  .count-val { font-size: 22px; font-weight: 700; color: #4ade80; min-width: 32px; text-align: center; }
+  .count-val-sm { font-size: 20px; font-weight: 700; color: #4ade80; min-width: 28px; text-align: center; }
+
+  /* Player entries */
+  .player-entries { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .player-row { display: flex; align-items: center; justify-content: space-between; background: #0d0d1a; border-radius: 8px; padding: 6px 10px; }
+  .player-info { display: flex; align-items: center; gap: 8px; }
+  .player-name { font-size: 14px; font-weight: 500; color: #ccc; }
+
+  /* Avatar */
+  .avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.15); }
+  .avatar-fallback { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.15); font-family: system-ui, sans-serif; letter-spacing: 0.5px; }
+
+  /* Dropdown */
+  .add-wrap { position: relative; display: inline-block; }
+  .dropdown { position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 10px; padding: 6px; z-index: 999; width: 220px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); display: none; }
+  .dropdown.open { display: block; }
+  .dropdown-inner { max-height: 240px; overflow-y: auto; }
+  .dd-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 14px; transition: background 0.1s; }
+  .dd-item:hover { background: #2a2a45; }
+
+  /* Overlay */
+  #overlay { display: none; position: fixed; inset: 0; z-index: 998; }
+  #overlay.open { display: block; }
+
+  /* Leaderboard */
+  #leaderboard { display: none; }
+  .lb-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: #555; margin-bottom: 16px; }
+  .lb-empty { color: #555; text-align: center; padding: 40px 0; }
+  .lb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lb-card { background: #12121e; border: 1px solid #1e1e30; border-radius: 16px; overflow: hidden; position: relative; transition: border-color 0.2s; cursor: pointer; }
+  .lb-card:hover { border-color: #3a3a60; }
+  .lb-card-photo { width: 100%; aspect-ratio: 1/1; object-fit: cover; object-position: top; display: block; }
+  .lb-card-photo-fallback { width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 700; color: #fff; font-family: system-ui, sans-serif; }
+  .lb-card-rank { position: absolute; top: 8px; left: 8px; font-size: 13px; font-weight: 800; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .lb-card-total { position: absolute; top: 8px; right: 8px; font-size: 18px; font-weight: 800; color: #7c7cff; background: rgba(10,10,20,0.8); border-radius: 8px; padding: 2px 8px; line-height: 1.4; }
+  .lb-card-body { padding: 10px 12px 12px; }
+  .lb-card-name { font-size: 14px; font-weight: 700; color: #eee; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .lb-badge { font-size: 11px; color: #888; background: #1a1a2e; border-radius: 5px; padding: 2px 6px; }
+  .lb-badge span { color: #7c7cff; font-weight: 700; }
+
+  /* Player Modal */
+  #player-modal-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.75);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  #player-modal-backdrop.open { display: flex; }
+  #player-modal {
+    background: #13131f; border: 1px solid #2a2a45; border-radius: 24px;
+    width: 100%; max-width: 420px; max-height: 90vh;
+    overflow-y: auto; position: relative;
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .pm-close {
+    position: absolute; top: 14px; right: 14px; z-index: 10;
+    background: rgba(0,0,0,0.5); border: none; border-radius: 50%;
+    width: 34px; height: 34px; color: #aaa; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .pm-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .pm-photo-wrap { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 24px 24px 0 0; }
+  .pm-photo { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .pm-photo-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 72px; font-weight: 700; color: #fff; }
+  .pm-photo-gradient { display: none; }
+  .pm-photo-name { display: none; }
+  .pm-name { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+  .pm-total-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,124,255,0.2); border: 1px solid rgba(124,124,255,0.35); border-radius: 20px; padding: 4px 12px; margin-top: 6px; }
+  .pm-total-pill span { font-size: 13px; font-weight: 700; color: #7c7cff; }
+  .pm-total-pill small { font-size: 11px; color: #7c7cff; opacity: 0.7; font-weight: 500; }
+  .pm-body { padding: 20px; }
+  .pm-section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #444; margin-bottom: 12px; }
+  .pm-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pm-stat-row { background: #0d0d1a; border: 1px solid #1e1e30; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .pm-stat-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+  .pm-stat-info { flex: 1; min-width: 0; }
+  .pm-stat-label { font-size: 11px; color: #555; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pm-stat-count { font-size: 24px; font-weight: 800; color: #4ade80; line-height: 1; }
+  .pm-no-stats { grid-column: 1/-1; text-align: center; color: #444; padding: 20px 0; font-size: 13px; }
+
+  /* Views */
+  #stats-view { display: block; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div class="title">Velvet Kicks</div>
+    <div class="subtitle">STATS TRACKER</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('stats')">Stats</button>
+    <button class="tab" onclick="switchView('leaderboard')">Board</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="stats-view"></div>
+  <div id="leaderboard-view" style="display:none;">
+    <div class="lb-title">PLAYER LEADERBOARD</div>
+    <div id="lb-content"></div>
+  </div>
+</div>
+
+<div id="overlay" onclick="closeAllDropdowns()"></div>
+
+<!-- Player Modal -->
+<div id="player-modal-backdrop" onclick="closePlayerModal(event)">
+  <div id="player-modal">
+    <button class="pm-close" onclick="closePlayerModal()">&#x2715;</button>
+    <div class="pm-photo-wrap" id="pm-photo-wrap"></div>
+    <div class="pm-body">
+      <div style="margin-bottom:16px;">
+        <div id="pm-name" class="pm-name"></div>
+        <div class="pm-total-pill" style="margin-top:6px;"><span id="pm-total"></span><small>TOTAL STATS</small></div>
+      </div>
+      <div class="pm-section-title">ACHIEVEMENTS</div>
+      <div id="pm-stats-grid" class="pm-stats-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PLAYERS = [
+  "Violet Evergarden","Female Chief","Makima","Shalom","Kafka","Kiana Kaslana",
+  "Mikasa Ackerman","Zoya","Acheron","Raiden Shogun","Arlecchino","Artoria Pendragon",
+  "Clorinde","Dva","Yumeko Jabami","2B","Rita Rossweisse","Elysia","Kujou Sara",
+  "Tracer","Albedo","Esdeath"
+];
+
+const AVATAR_COLORS = [
+  "#e84393","#f59e0b","#ef4444","#10b981","#8b5cf6","#3b82f6",
+  "#f97316","#06b6d4","#ec4899","#6366f1","#14b8a6","#84cc16",
+  "#a855f7","#0ea5e9","#f43f5e","#78716c","#e11d48","#7c3aed",
+  "#b45309","#22c55e","#0284c7","#dc2626"
+];
+
+const BASE_URL = "https://owdzeyfhdqbnznidmobf.supabase.co/storage/v1/object/public/Players%20Velvet%20Kicks/";
+const PLAYER_PHOTOS = {
+  "Violet Evergarden": BASE_URL + "violetevergarden.png",
+  "Female Chief":      BASE_URL + "femalechief.png",
+  "Makima":            BASE_URL + "makima.png",
+  "Shalom":            BASE_URL + "shalom.png",
+  "Kafka":             BASE_URL + "kafka.png",
+  "Kiana Kaslana":     BASE_URL + "kianakaslana.png",
+  "Mikasa Ackerman":   BASE_URL + "mikasaackerman.png",
+  "Zoya":              BASE_URL + "zoya.png",
+  "Acheron":           BASE_URL + "acheron.png",
+  "Raiden Shogun":     BASE_URL + "raidenshogun.png",
+  "Arlecchino":        BASE_URL + "arlecchino.png",
+  "Artoria Pendragon": BASE_URL + "artoriapendragon.png",
+  "Clorinde":          BASE_URL + "clorinde.png",
+  "Dva":               BASE_URL + "dva.png",
+  "Yumeko Jabami":     BASE_URL + "yumekojabami.png",
+  "2B":                BASE_URL + "2b.png",
+  "Rita Rossweisse":   BASE_URL + "ritarossweisse.png",
+  "Elysia":            BASE_URL + "elysia.png",
+  "Kujou Sara":        BASE_URL + "kujousara.png",
+  "Tracer":            BASE_URL + "tracer.png",
+  "Albedo":            BASE_URL + "albedo.png",
+  "Esdeath":           BASE_URL + "esdeath.png",
+};
+
+const STATS = [
+  { key: "quattrick",        label: "Quattrick",        icon: "⚽⚽⚽⚽", hasPlayers: true },
+  { key: "quattrick_assist", label: "Quattrick Assist", icon: "🎯🎯🎯🎯", hasPlayers: true },
+  { key: "hattrick",         label: "Hattrick",         icon: "⚽⚽⚽",   hasPlayers: true },
+  { key: "hattrick_assist",  label: "Hattrick Assist",  icon: "🎯🎯🎯",   hasPlayers: true },
+  { key: "own_goal",         label: "Own Goal",         icon: "🔴",       hasPlayers: true },
+  { key: "clean_sheet",      label: "Clean Sheet",      icon: "🧤",       hasPlayers: false },
+  { key: "brace",            label: "Brace",            icon: "⚽⚽",     hasPlayers: true },
+  { key: "brace_assist",     label: "Brace Assist",     icon: "🎯🎯",     hasPlayers: true },
+  { key: "penalty_goal",     label: "Penalty Goal",     icon: "🥅",       hasPlayers: true },
+  { key: "winning_goal",     label: "Winning Goal",     icon: "🏆",       hasPlayers: true },
+  { key: "double_yellow",    label: "Double Yellow",    icon: "🟨🟨",     hasPlayers: true },
+  { key: "comeback_win",     label: "Comeback Win",     icon: "💪",       hasPlayers: false },
+  { key: "shutout_streak",   label: "Shutout Streak",   icon: "🔒",       hasPlayers: false },
+  { key: "injury",           label: "Injury",           icon: "🩹",       hasPlayers: true },
+];
+
+// State
+const stats = {};
+STATS.forEach(st => { stats[st.key] = { count: 0, entries: [] }; });
+
+// Prefill
+const prefill = [
+  { key: "hattrick",       player: "Female Chief",      count: 1 },
+  { key: "hattrick_assist",player: "Shalom",            count: 1 },
+  { key: "own_goal",       player: "Tracer",            count: 1 },
+  { key: "clean_sheet",    count: 6 },
+  { key: "brace",          player: "Female Chief",      count: 1 },
+  { key: "brace",          player: "Violet Evergarden", count: 1 },
+  { key: "brace",          player: "Makima",            count: 1 },
+  { key: "brace_assist",   player: "Shalom",            count: 1 },
+  { key: "injury",         player: "Raiden Shogun",     count: 1 },
+];
+prefill.forEach(p => {
+  if (p.player) {
+    stats[p.key].entries.push({ player: p.player, count: p.count });
+  } else {
+    stats[p.key].count = p.count;
+  }
+});
+
+let currentView = 'stats';
+let openDropdown = null;
+
+// Helpers
+function playerColor(name) {
+  return AVATAR_COLORS[PLAYERS.indexOf(name) % AVATAR_COLORS.length];
+}
+function initials(name) {
+  return name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+}
+function avatarHTML(name, size) {
+  const photo = PLAYER_PHOTOS[name];
+  if (photo) {
+    return `<img src="${photo}" alt="${name}" class="avatar" style="width:${size}px;height:${size}px;" onerror="this.outerHTML=fallbackAvatar('${name}',${size})">`;
+  }
+  return fallbackAvatar(name, size);
+}
+function fallbackAvatar(name, size) {
+  const color = playerColor(name);
+  const fs = Math.round(size * 0.32);
+  return `<div class="avatar-fallback" style="width:${size}px;height:${size}px;background:${color};font-size:${fs}px;">${initials(name)}</div>`;
+}
+
+// Render
+function renderStats() {
+  const container = document.getElementById('stats-view');
+  container.innerHTML = '';
+  STATS.forEach(stat => {
+    const data = stats[stat.key];
+    const hasContent = (!stat.hasPlayers) || data.entries.length > 0;
+
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+
+    // Header
+    let headerHTML = `
+      <div class="stat-header ${hasContent ? 'has-content' : ''}">
+        <div class="stat-label">
+          <span class="stat-icon">${stat.icon}</span>
+          <span class="stat-name">${stat.label}</span>
+        </div>`;
+
+    if (!stat.hasPlayers) {
+      headerHTML += `
+        <div class="count-controls">
+          <button class="btn btn-minus" onclick="changeCount('${stat.key}',-1)">−</button>
+          <span class="count-val" id="count-${stat.key}">${data.count}</span>
+          <button class="btn btn-plus" onclick="changeCount('${stat.key}',1)">+</button>
+        </div>`;
+    }
+    headerHTML += `</div>`;
+
+    // Player entries
+    let entriesHTML = '';
+    if (stat.hasPlayers && data.entries.length > 0) {
+      entriesHTML = `<div class="player-entries">`;
+      data.entries.forEach(entry => {
+        entriesHTML += `
+          <div class="player-row">
+            <div class="player-info">
+              ${avatarHTML(entry.player, 32)}
+              <span class="player-name">${entry.player}</span>
+            </div>
+            <div class="count-controls">
+              <button class="btn btn-minus" onclick="changeEntry('${stat.key}','${entry.player}',-1)">−</button>
+              <span class="count-val-sm">${entry.count}</span>
+              <button class="btn btn-plus" onclick="changeEntry('${stat.key}','${entry.player}',1)">+</button>
+            </div>
+          </div>`;
+      });
+      entriesHTML += `</div>`;
+    }
+
+    // Add player button + dropdown
+    let addHTML = '';
+    if (stat.hasPlayers) {
+      const isOpen = openDropdown === stat.key;
+      let ddItems = PLAYERS.map(p => `
+        <div class="dd-item" onclick="addPlayer('${stat.key}','${p}')">
+          ${avatarHTML(p, 28)}
+          <span>${p}</span>
+        </div>`).join('');
+
+      addHTML = `
+        <div class="add-wrap">
+          <button class="btn btn-add" onclick="toggleDropdown(event,'${stat.key}')">+ Add Player</button>
+          <div class="dropdown ${isOpen ? 'open' : ''}" id="dd-${stat.key}">
+            <div class="dropdown-inner">${ddItems}</div>
+          </div>
+        </div>`;
+    }
+
+    card.innerHTML = headerHTML + entriesHTML + addHTML;
+    container.appendChild(card);
+  });
+}
+
+function renderLeaderboard() {
+  const leaderboard = PLAYERS.map(player => {
+    const totals = {};
+    STATS.filter(s => s.hasPlayers).forEach(st => {
+      const entry = stats[st.key].entries.find(e => e.player === player);
+      totals[st.key] = entry ? entry.count : 0;
+    });
+    const total = Object.values(totals).reduce((a, b) => a + b, 0);
+    return { player, totals, total };
+  }).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+
+  const container = document.getElementById('lb-content');
+  if (leaderboard.length === 0) {
+    container.innerHTML = '<div class="lb-empty">No stats recorded yet</div>';
+    return;
+  }
+
+  const rankLabel = (i) => {
+    if (i === 0) return { bg: '#fbbf24', color: '#000', text: '1' };
+    if (i === 1) return { bg: '#94a3b8', color: '#000', text: '2' };
+    if (i === 2) return { bg: '#b87333', color: '#fff', text: '3' };
+    return { bg: 'rgba(0,0,0,0.7)', color: '#aaa', text: i + 1 };
+  };
+
+  const cards = leaderboard.map((row, i) => {
+    const rank = rankLabel(i);
+    const photo = PLAYER_PHOTOS[row.player];
+    const color = playerColor(row.player);
+    const ini = initials(row.player);
+    const photoEl = photo
+      ? `<img src="${photo}" alt="${row.player}" class="lb-card-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">\
+<div class="lb-card-photo-fallback" style="background:${color};display:none">${ini}</div>`
+      : `<div class="lb-card-photo-fallback" style="background:${color}">${ini}</div>`;
+    const badges = STATS.filter(s => s.hasPlayers && row.totals[s.key] > 0)
+      .map(s => `<span class="lb-badge">${s.icon} <span>${row.totals[s.key]}</span></span>`)
+      .join('');
+    return `
+      <div class="lb-card" onclick="openPlayerModal('${row.player}')">
+        ${photoEl}
+        <div class="lb-card-rank" style="background:${rank.bg};color:${rank.color}">${rank.text}</div>
+        <div class="lb-card-total">${row.total}</div>
+        <div class="lb-card-body">
+          <div class="lb-card-name">${row.player}</div>
+          <div class="lb-badges">${badges}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `<div class="lb-grid">${cards}</div>`;
+}
+
+// Actions
+function changeCount(key, delta) {
+  stats[key].count = Math.max(0, stats[key].count + delta);
+  renderStats();
+}
+
+function changeEntry(statKey, player, delta) {
+  const entries = stats[statKey].entries;
+  const idx = entries.findIndex(e => e.player === player);
+  if (idx >= 0) {
+    entries[idx].count += delta;
+    if (entries[idx].count <= 0) entries.splice(idx, 1);
+  }
+  renderStats();
+}
+
+function addPlayer(statKey, player) {
+  const entries = stats[statKey].entries;
+  const existing = entries.find(e => e.player === player);
+  if (existing) {
+    existing.count += 1;
+  } else {
+    entries.push({ player, count: 1 });
+  }
+  openDropdown = null;
+  document.getElementById('overlay').classList.remove('open');
+  renderStats();
+}
+
+function toggleDropdown(e, statKey) {
+  e.stopPropagation();
+  if (openDropdown === statKey) {
+    openDropdown = null;
+    document.getElementById('overlay').classList.remove('open');
+  } else {
+    openDropdown = statKey;
+    document.getElementById('overlay').classList.add('open');
+  }
+  renderStats();
+}
+
+function closeAllDropdowns() {
+  openDropdown = null;
+  document.getElementById('overlay').classList.remove('open');
+  renderStats();
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && view === 'stats') || (i === 1 && view === 'leaderboard'));
+  });
+  document.getElementById('stats-view').style.display = view === 'stats' ? 'block' : 'none';
+  document.getElementById('leaderboard-view').style.display = view === 'leaderboard' ? 'block' : 'none';
+  if (view === 'leaderboard') renderLeaderboard();
+}
+
+function openPlayerModal(playerName) {
+  const photo = PLAYER_PHOTOS[playerName];
+  const color = playerColor(playerName);
+  const ini = initials(playerName);
+
+  // Rebuild photo inside wrap, preserving gradient + name overlay children
+  const photoWrap = document.getElementById('pm-photo-wrap');
+  const old = photoWrap.querySelector('.pm-photo, .pm-photo-fallback');
+  if (old) old.remove();
+
+  if (photo) {
+    const img = document.createElement('img');
+    img.src = photo; img.alt = playerName; img.className = 'pm-photo';
+    img.onerror = function() {
+      const fb = document.createElement('div');
+      fb.className = 'pm-photo-fallback';
+      fb.style.background = color;
+      fb.textContent = ini;
+      this.replaceWith(fb);
+    };
+    photoWrap.appendChild(img);
+  } else {
+    const fb = document.createElement('div');
+    fb.className = 'pm-photo-fallback';
+    fb.style.background = color;
+    fb.textContent = ini;
+    photoWrap.appendChild(fb);
+  }
+
+  // Totals
+  const totals = {};
+  STATS.filter(s => s.hasPlayers).forEach(st => {
+    const entry = stats[st.key].entries.find(e => e.player === playerName);
+    totals[st.key] = entry ? entry.count : 0;
+  });
+  const total = Object.values(totals).reduce((a, b) => a + b, 0);
+
+  document.getElementById('pm-name').textContent = playerName;
+  document.getElementById('pm-total').textContent = total;
+
+  // Stats grid
+  const activeStats = STATS.filter(s => s.hasPlayers && totals[s.key] > 0);
+  const grid = document.getElementById('pm-stats-grid');
+  grid.innerHTML = activeStats.length === 0
+    ? `<div class="pm-no-stats">No stats recorded yet</div>`
+    : activeStats.map(s => `
+      <div class="pm-stat-row">
+        <div class="pm-stat-icon">${s.icon}</div>
+        <div class="pm-stat-info">
+          <div class="pm-stat-label">${s.label}</div>
+          <div class="pm-stat-count">${totals[s.key]}</div>
+        </div>
+      </div>`).join('');
+
+  document.getElementById('player-modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePlayerModal(e) {
+  if (e && e.target !== document.getElementById('player-modal-backdrop')) return;
+  document.getElementById('player-modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Init
+renderStats();
+</script>
+</body>
+</html>
